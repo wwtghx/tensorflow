@@ -18,13 +18,18 @@ limitations under the License.
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include "flatbuffers/buffer.h"  // from @flatbuffers
+#include "flatbuffers/flatbuffer_builder.h"  // from @flatbuffers
+#include "flatbuffers/vector.h"  // from @flatbuffers
+#include "tensorflow/lite/schema/schema_generated.h"
+#include "tensorflow/lite/toco/model.h"
+#include "tensorflow/lite/toco/runtime/types.h"
 
 namespace toco {
 
 namespace tflite {
 namespace {
 
-using flatbuffers::FlatBufferBuilder;
 using flatbuffers::Offset;
 using flatbuffers::Vector;
 

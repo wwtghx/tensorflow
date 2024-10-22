@@ -18,10 +18,13 @@ limitations under the License.
 #include <functional>
 #include <memory>
 #include <random>
+#include <vector>
 
 #include <gtest/gtest.h>
+#include "tensorflow/lite/c/c_api_types.h"
 #include "tensorflow/lite/delegates/xnnpack/reshape_tester.h"
 #include "tensorflow/lite/delegates/xnnpack/xnnpack_delegate.h"
+#include "tensorflow/lite/schema/schema_generated.h"
 
 namespace tflite {
 namespace xnnpack {
@@ -44,7 +47,7 @@ TEST(Reshape, 4DShapeAsInput) {
       .InputShape(input_shape)
       .OutputShape(output_shape)
       .OutputShapeAsInput(true)
-      .Test(xnnpack_delegate.get());
+      .Test(TensorType_FLOAT32, xnnpack_delegate.get());
 }
 
 TEST(Reshape, 4DShapeAsParam) {
@@ -65,7 +68,7 @@ TEST(Reshape, 4DShapeAsParam) {
       .InputShape(input_shape)
       .OutputShape(output_shape)
       .OutputShapeAsInput(false)
-      .Test(xnnpack_delegate.get());
+      .Test(TensorType_FLOAT32, xnnpack_delegate.get());
 }
 
 TEST(Reshape, 3DShapeAsInput) {
@@ -86,7 +89,7 @@ TEST(Reshape, 3DShapeAsInput) {
       .InputShape(input_shape)
       .OutputShape(output_shape)
       .OutputShapeAsInput(true)
-      .Test(xnnpack_delegate.get());
+      .Test(TensorType_FLOAT32, xnnpack_delegate.get());
 }
 
 TEST(Reshape, 3DShapeAsParam) {
@@ -107,7 +110,7 @@ TEST(Reshape, 3DShapeAsParam) {
       .InputShape(input_shape)
       .OutputShape(output_shape)
       .OutputShapeAsInput(false)
-      .Test(xnnpack_delegate.get());
+      .Test(TensorType_FLOAT32, xnnpack_delegate.get());
 }
 
 TEST(Reshape, 2DShapeAsInput) {
@@ -127,7 +130,7 @@ TEST(Reshape, 2DShapeAsInput) {
       .InputShape(input_shape)
       .OutputShape(output_shape)
       .OutputShapeAsInput(true)
-      .Test(xnnpack_delegate.get());
+      .Test(TensorType_FLOAT32, xnnpack_delegate.get());
 }
 
 TEST(Reshape, 2DShapeAsParam) {
@@ -147,7 +150,7 @@ TEST(Reshape, 2DShapeAsParam) {
       .InputShape(input_shape)
       .OutputShape(output_shape)
       .OutputShapeAsInput(false)
-      .Test(xnnpack_delegate.get());
+      .Test(TensorType_FLOAT32, xnnpack_delegate.get());
 }
 
 TEST(Reshape, 1DShapeAsInput) {
@@ -165,7 +168,7 @@ TEST(Reshape, 1DShapeAsInput) {
       .InputShape(shape)
       .OutputShape(shape)
       .OutputShapeAsInput(true)
-      .Test(xnnpack_delegate.get());
+      .Test(TensorType_FLOAT32, xnnpack_delegate.get());
 }
 
 TEST(Reshape, 1DShapeAsParam) {
@@ -183,7 +186,7 @@ TEST(Reshape, 1DShapeAsParam) {
       .InputShape(shape)
       .OutputShape(shape)
       .OutputShapeAsInput(false)
-      .Test(xnnpack_delegate.get());
+      .Test(TensorType_FLOAT32, xnnpack_delegate.get());
 }
 
 TEST(Reshape, 0D) {
@@ -194,7 +197,7 @@ TEST(Reshape, 0D) {
   ReshapeTester()
       .InputShape(std::vector<int32_t>())
       .OutputShape(std::vector<int32_t>())
-      .Test(xnnpack_delegate.get());
+      .Test(TensorType_FLOAT32, xnnpack_delegate.get());
 }
 
 TEST(Reshape, MultiThreading) {
@@ -218,7 +221,7 @@ TEST(Reshape, MultiThreading) {
       .InputShape(input_shape)
       .OutputShape(output_shape)
       .OutputShapeAsInput(true)
-      .Test(xnnpack_delegate.get());
+      .Test(TensorType_FLOAT32, xnnpack_delegate.get());
 }
 
 }  // namespace xnnpack

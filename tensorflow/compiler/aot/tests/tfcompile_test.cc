@@ -13,14 +13,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
+#include <algorithm>
+#include <vector>
 #define EIGEN_USE_THREADS
 #define EIGEN_USE_CUSTOM_THREAD_POOL
 
 #include "absl/strings/str_split.h"
-#include "third_party/eigen3/unsupported/Eigen/CXX11/Tensor"
-#include "tensorflow/compiler/xla/service/hlo_profile_printer.h"
-#include "tensorflow/compiler/xla/shape_util.h"
-#include "tensorflow/compiler/xla/test.h"
+#include "unsupported/Eigen/CXX11/Tensor"  // from @eigen_archive
+#include "xla/service/hlo_profile_printer.h"
+#include "xla/shape_util.h"
+#include "xla/test.h"
 #include "tensorflow/core/platform/regexp.h"
 #include "tensorflow/core/platform/test.h"
 
@@ -489,8 +491,7 @@ TEST(TFCompileTest, Splits) {
   EXPECT_NEAR(expected[2], fn.result0(1, 0), 1e4);
   EXPECT_NEAR(expected[3], fn.result0(1, 1), 1e4);
 }
-// TODO(b/220696648): Debug the sort op for tf_compile with HloLowering.
-#if !defined(MHLO_LOWERING_TEST)
+
 TEST(TFCompileTest, TopK) {
   Eigen::ThreadPool tp(1);
   Eigen::ThreadPoolDevice device(&tp, tp.NumThreads());
@@ -514,7 +515,6 @@ TEST(TFCompileTest, TopK) {
   EXPECT_EQ(expected_indices[0], fn.result1(0));
   EXPECT_EQ(expected_indices[1], fn.result1(1));
 }
-#endif
 
 TEST(TFCompileTest, VariableReadonly) {
   Eigen::ThreadPool tp(1);

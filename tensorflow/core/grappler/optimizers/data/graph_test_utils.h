@@ -73,6 +73,13 @@ NodeDef MakeParallelInterleaveV4Node(StringPiece name,
                                      StringPiece function_name,
                                      StringPiece deterministic);
 
+// Creates a test NodeDef for InterleaveDataset.
+NodeDef MakeInterleaveNode(StringPiece name, StringPiece input_node_name,
+                           StringPiece cycle_length_node_name,
+                           StringPiece block_length_node_name,
+                           StringPiece function_name,
+                           StringPiece deterministic);
+
 // Creates a test NodeDef for ParallelMapDataset.
 NodeDef MakeParallelMapNode(StringPiece name, StringPiece input_node_name,
                             StringPiece num_parallel_calls_node_name,
@@ -82,7 +89,8 @@ NodeDef MakeParallelMapNode(StringPiece name, StringPiece input_node_name,
 NodeDef MakeParallelMapV2Node(StringPiece name, StringPiece input_node_name,
                               StringPiece num_parallel_calls_node_name,
                               StringPiece function_name,
-                              StringPiece deterministic);
+                              StringPiece deterministic,
+                              bool use_unbounded_threadpool);
 
 // Creates a test NodeDef for ParseExampleDataset.
 NodeDef MakeParseExampleNode(StringPiece name, StringPiece input_node_name,
@@ -97,6 +105,10 @@ NodeDef MakeShuffleV2Node(StringPiece name, StringPiece input_node_name,
 // Creates a test NodeDef for TakeDataset.
 NodeDef MakeTakeNode(StringPiece name, StringPiece input_node_name,
                      StringPiece count_node_name);
+
+// Creates a test NodeDef for TensorSliceDataset.
+NodeDef MakeTensorSliceNode(StringPiece name, StringPiece tensor_node_name,
+                            bool replicate_on_split);
 
 // Creates a test NodeDef for SkipDataset.
 NodeDef MakeSkipNode(StringPiece name, StringPiece input_node_name,

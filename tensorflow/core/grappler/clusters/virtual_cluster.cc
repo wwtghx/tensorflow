@@ -26,7 +26,7 @@ namespace grappler {
 
 VirtualCluster::VirtualCluster(
     const std::unordered_map<string, DeviceProperties>& devices)
-    : VirtualCluster(devices, absl::make_unique<OpLevelCostEstimator>(),
+    : VirtualCluster(devices, std::make_unique<OpLevelCostEstimator>(),
                      ReadyNodeManagerFactory("FirstReady")) {}
 
 VirtualCluster::VirtualCluster(
@@ -38,7 +38,7 @@ VirtualCluster::VirtualCluster(
 
   // Note that we do not use aggressive shape inference to preserve unknown
   // shapes from the input graph.
-  estimator_ = absl::make_unique<AnalyticalCostEstimator>(
+  estimator_ = std::make_unique<AnalyticalCostEstimator>(
       this, std::move(node_estimator), std::move(node_manager),
       /*use_static_shapes=*/true, /*use_aggressive_shape_inference=*/false);
 }
@@ -57,16 +57,15 @@ VirtualCluster::VirtualCluster(const DeviceSet* device_set)
 
 VirtualCluster::~VirtualCluster() {}
 
-Status VirtualCluster::Provision() { return Status::OK(); }
+absl::Status VirtualCluster::Provision() { return absl::OkStatus(); }
 
-Status VirtualCluster::Initialize(const GrapplerItem& item) {
-  return Status::OK();
+absl::Status VirtualCluster::Initialize(const GrapplerItem& item) {
+  return absl::OkStatus();
 }
 
-Status VirtualCluster::Run(const GraphDef& graph,
-                           const std::vector<std::pair<string, Tensor>>& feed,
-                           const std::vector<string>& fetch,
-                           RunMetadata* metadata) {
+absl::Status VirtualCluster::Run(
+    const GraphDef& graph, const std::vector<std::pair<string, Tensor>>& feed,
+    const std::vector<string>& fetch, RunMetadata* metadata) {
   GrapplerItem item;
   item.graph = graph;
   item.feed = feed;
@@ -74,7 +73,8 @@ Status VirtualCluster::Run(const GraphDef& graph,
   return Run(item, metadata);
 }
 
-Status VirtualCluster::Run(const GrapplerItem& item, RunMetadata* metadata) {
+absl::Status VirtualCluster::Run(const GrapplerItem& item,
+                                 RunMetadata* metadata) {
   // Initializes an analytical cost estimator to estimate the graph cost. Makes
   // sure to use static shape inference to prevent the virtual scheduler from
   // calling the Run method on the cluster and creating an infinite loop.
@@ -114,7 +114,7 @@ Status VirtualCluster::Run(const GrapplerItem& item, RunMetadata* metadata) {
     }
   }
 
-  return Status::OK();
+  return absl::OkStatus();
 }
 
 }  // namespace grappler

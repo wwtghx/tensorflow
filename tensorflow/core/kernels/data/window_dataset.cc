@@ -17,10 +17,22 @@ limitations under the License.
 #include <string>
 #include <utility>
 
+#include "absl/status/status.h"
 #include "tensorflow/core/data/name_utils.h"
+#include "tensorflow/core/framework/dataset.h"
+#include "tensorflow/core/framework/dataset_options.pb.h"
 #include "tensorflow/core/framework/op_kernel.h"
+#include "tensorflow/core/framework/op_requires.h"
+#include "tensorflow/core/framework/tensor.h"
+#include "tensorflow/core/framework/tensor_shape.h"
+#include "tensorflow/core/framework/types.h"
 #include "tensorflow/core/graph/graph.h"
 #include "tensorflow/core/platform/errors.h"
+#include "tensorflow/core/platform/mutex.h"
+#include "tensorflow/core/platform/status.h"
+#include "tensorflow/core/platform/types.h"
+#include "tsl/platform/errors.h"
+#include "tsl/platform/thread_annotations.h"
 
 namespace tensorflow {
 namespace data {
@@ -44,7 +56,7 @@ class Window : public DatasetBase {
 
   std::unique_ptr<IteratorBase> MakeIteratorInternal(
       const string& prefix) const override {
-    return absl::make_unique<Iterator>(
+    return std::make_unique<Iterator>(
         Iterator::Params{this, name_utils::IteratorPrefix(kWindow, prefix)});
   }
 
@@ -70,15 +82,17 @@ class Window : public DatasetBase {
     return total_bytes;
   }
 
-  int64_t CardinalityInternal() const override { return elements_.size(); }
+  int64_t CardinalityInternal(CardinalityOptions options) const override {
+    return elements_.size();
+  }
 
   string DebugString() const override { return kWindow; }
 
   Status InputDatasets(std::vector<const DatasetBase*>* inputs) const override {
-    return Status::OK();
+    return absl::OkStatus();
   }
 
-  Status CheckExternalState() const override { return Status::OK(); }
+  Status CheckExternalState() const override { return absl::OkStatus(); }
 
  protected:
   Status AsGraphDefInternal(SerializationContext* ctx,
@@ -101,7 +115,7 @@ class Window : public DatasetBase {
     }
     TF_RETURN_IF_ERROR(
         b->AddDataset(this, {}, {std::make_pair(0, input_nodes)}, {}, output));
-    return Status::OK();
+    return absl::OkStatus();
   }
 
  private:
@@ -119,23 +133,23 @@ class Window : public DatasetBase {
         *end_of_sequence = false;
         *out_tensors = dataset()->elements_[i_++];
       }
-      return Status::OK();
+      return absl::OkStatus();
     }
 
     Status SaveInternal(SerializationContext* ctx,
                         IteratorStateWriter* writer) override {
       mutex_lock l(mu_);
-      TF_RETURN_IF_ERROR(writer->WriteScalar(full_name(kCurIndex), i_));
-      return Status::OK();
+      TF_RETURN_IF_ERROR(writer->WriteScalar(prefix(), kCurIndex, i_));
+      return absl::OkStatus();
     }
 
     Status RestoreInternal(IteratorContext* ctx,
                            IteratorStateReader* reader) override {
       mutex_lock l(mu_);
       int64_t i;
-      TF_RETURN_IF_ERROR(reader->ReadScalar(full_name(kCurIndex), &i));
+      TF_RETURN_IF_ERROR(reader->ReadScalar(prefix(), kCurIndex, &i));
       i_ = size_t(i);
-      return Status::OK();
+      return absl::OkStatus();
     }
 
     mutex mu_;
@@ -163,6 +177,7 @@ class WindowOp : public DatasetOpKernel {
     std::vector<std::vector<Tensor>> elements;
     for (size_t i = 0; i < num_elements; ++i) {
       std::vector<Tensor> element;
+      element.reserve(element_size);
       for (size_t j = 0; j < element_size; ++j) {
         element.push_back(std::move(inputs[i * element_size + j]));
       }
@@ -189,7 +204,7 @@ Status NewWindow(std::vector<std::vector<Tensor>> elements,
   *out_dataset = new Window(std::move(elements), std::move(output_types),
                             std::move(output_shapes));
   (*out_dataset)->Initialize(/*metadata=*/{});
-  return Status::OK();
+  return absl::OkStatus();
 }
 
 }  // namespace data

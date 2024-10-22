@@ -36,6 +36,7 @@ limitations under the License.
 #include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "mlir/Support/LogicalResult.h"  // from @llvm-project
 #include "tensorflow/compiler/mlir/lite/ir/tfl_ops.h"
+#include "tensorflow/compiler/mlir/lite/transforms/passes.h"
 #include "tensorflow/compiler/mlir/lite/utils/stateful_ops_utils.h"
 
 // Background info:
@@ -64,22 +65,14 @@ limitations under the License.
 namespace mlir {
 namespace TFL {
 namespace {
+#define GEN_PASS_DEF_SPLITMERGEDOPERANDSPASS
+#include "tensorflow/compiler/mlir/lite/transforms/passes.h.inc"
 
 struct SplitMergedOperandsPass
-    : public PassWrapper<SplitMergedOperandsPass, OperationPass<func::FuncOp>> {
+    : public impl::SplitMergedOperandsPassBase<SplitMergedOperandsPass> {
   MLIR_DEFINE_EXPLICIT_INTERNAL_INLINE_TYPE_ID(SplitMergedOperandsPass)
 
   void runOnOperation() override;
-
-  StringRef getArgument() const final {
-    // This is the argument used to refer to the pass in
-    // the textual format (on the commandline for example).
-    return "tfl-split-merged-operands";
-  }
-  StringRef getDescription() const final {
-    // This is a brief description of the pass.
-    return "Split merged stateful operands for tfl operations.";
-  }
 };
 
 LogicalResult DuplicateValueIfNeeded(Operation* op,
@@ -92,23 +85,36 @@ LogicalResult DuplicateValueIfNeeded(Operation* op,
     Value operand = op->getOperand(index);
     auto inserted_value = values->insert(operand).second;
     if (inserted_value) continue;
-    // We can only clone the constant op at this point.
-    // Since all ops have been legalized to tflite ops, so we only care about
-    // ConstOp or QConstOp or mlir constant op/
+    // We can only clone the constant op or const->dequantize combo. The latter
+    // case is useful for float16 quantization. Since all ops have been
+    // legalized to tflite ops, so we only care about ConstOp or QConstOp or
+    // mlir constant op.
     Operation* input_op = operand.getDefiningOp();
     if (input_op == nullptr) return failure();
 
     Attribute attr;
-    if (!matchPattern(input_op, m_Constant(&attr))) {
+    if (matchPattern(input_op, m_Constant(&attr))) {
+      // Constant case.
+      builder->setInsertionPoint(op);
+      Operation* duplicated_input_op = builder->clone(*input_op);
+
+      // Rewire the inputs.
+      op->setOperand(index, duplicated_input_op->getResult(0));
+    } else if (auto dq = dyn_cast<DequantizeOp>(input_op);
+               dq && matchPattern(dq.getInput(), m_Constant(&attr))) {
+      // Constant -> Dequantize case.
+      builder->setInsertionPoint(op);
+      Operation* duplicated_input_op =
+          builder->clone(*dq.getInput().getDefiningOp());
+      Operation* duplicated_dq_op = builder->clone(*dq);
+      // Rewire the inputs.
+      duplicated_dq_op->setOperand(0, duplicated_input_op->getResult(0));
+      op->setOperand(index, duplicated_dq_op->getResult(0));
+    } else {
       op->emitError()
           << "We cannot duplicate the value since it's not constant.\n";
       return failure();
     }
-    builder->setInsertionPoint(op);
-    Operation* duplicated_input_op = builder->clone(*input_op);
-
-    // Rewire the inputs.
-    op->setOperand(index, duplicated_input_op->getResult(0));
   }
   return success();
 }
@@ -134,8 +140,6 @@ void SplitMergedOperandsPass::runOnOperation() {
 std::unique_ptr<OperationPass<func::FuncOp>> CreateSplitMergedOperandsPass() {
   return std::make_unique<SplitMergedOperandsPass>();
 }
-
-static PassRegistration<SplitMergedOperandsPass> pass;
 
 }  // namespace TFL
 }  // namespace mlir

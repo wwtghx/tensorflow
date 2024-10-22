@@ -19,15 +19,20 @@ limitations under the License.
 #include <cstdint>
 
 #include "mlir/IR/Attributes.h"  // from @llvm-project
+#include "mlir/IR/Location.h"  // from @llvm-project
 #include "mlir/IR/Operation.h"  // from @llvm-project
 #include "mlir/IR/Types.h"  // from @llvm-project
+#include "mlir/IR/Value.h"  // from @llvm-project
+#include "mlir/IR/ValueRange.h"  // from @llvm-project
 #include "mlir/Interfaces/InferTypeOpInterface.h"  // from @llvm-project
 #include "mlir/Support/LLVM.h"  // from @llvm-project
 #include "mlir/Support/LogicalResult.h"  // from @llvm-project
+#include "tensorflow/core/framework/node_def_util.h"
 #include "tensorflow/core/framework/shape_inference.h"
+#include "tensorflow/core/platform/status.h"
 
 namespace tensorflow {
-class OpRegistrationData;
+struct OpRegistrationData;
 }  // namespace tensorflow
 
 namespace mlir {
@@ -66,7 +71,7 @@ using GetAttrValuesFn = llvm::function_ref<tensorflow::Status(
 // in TFG importer. For operations that has different format of attributes, they
 // should give the `get_attr_values_fn` to read the attributes correctly.
 LogicalResult InferReturnTypeComponentsForTFOp(
-    Optional<Location> location, Operation* op, ValueRange operands,
+    std::optional<Location> location, Operation* op, ValueRange operands,
     int64_t graph_version, OperandAsConstantFn operand_as_constant_fn,
     OpResultAsShapeFn op_result_as_shape_fn,
     ResultElementTypeFn result_element_type_fn,
@@ -77,7 +82,7 @@ LogicalResult InferReturnTypeComponentsForTFOp(
 // ConvertOperationToNode to convert the operation to NodeDef to get the attr
 // values.
 LogicalResult InferReturnTypeComponentsForTFOp(
-    Optional<Location> location, Operation* op, ValueRange operands,
+    std::optional<Location> location, Operation* op, ValueRange operands,
     int64_t graph_version, OperandAsConstantFn operand_as_constant_fn,
     OpResultAsShapeFn op_result_as_shape_fn,
     ResultElementTypeFn result_element_type_fn,

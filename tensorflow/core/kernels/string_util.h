@@ -16,6 +16,7 @@ limitations under the License.
 #define TENSORFLOW_CORE_KERNELS_STRING_UTIL_H_
 
 #include "tensorflow/core/lib/core/status.h"
+#include "tensorflow/core/lib/core/stringpiece.h"
 
 namespace tensorflow {
 
@@ -32,10 +33,10 @@ enum class CharUnit { BYTE, UTF8_CHAR };
 inline bool IsTrailByte(char x) { return static_cast<signed char>(x) < -0x40; }
 
 // Sets `encoding` based on `str`.
-Status ParseUnicodeEncoding(const string& str, UnicodeEncoding* encoding);
+absl::Status ParseUnicodeEncoding(const string& str, UnicodeEncoding* encoding);
 
 // Sets `unit` value based on `str`.
-Status ParseCharUnit(const string& str, CharUnit* unit);
+absl::Status ParseCharUnit(const string& str, CharUnit* unit);
 
 // Returns the number of Unicode characters in a UTF-8 string.
 // Result may be incorrect if the input string is not valid UTF-8.
@@ -55,7 +56,7 @@ bool ForwardNUTF8CharPositions(const StringPiece in,
     // move forward one utf-8 character
     do {
       ++*pos;
-    } while (IsTrailByte(in[*pos]) && *pos < size);
+    } while (*pos < size && IsTrailByte(in[*pos]));
     ++utf8_chars_counted;
   }
   return utf8_chars_counted == num_utf8_chars_to_shift;

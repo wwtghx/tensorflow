@@ -21,7 +21,7 @@ limitations under the License.
 // This file contains macros and payload keys for the error counter in
 // EagerClient.
 
-namespace tensorflow {
+namespace tsl {
 
 // Proto: tensorflow::core::platform::ErrorSourceProto
 // Location: tensorflow/core/protobuf/core_platform_payloads.proto
@@ -38,7 +38,12 @@ constexpr char kErrorSource[] =
 void OkOrSetErrorCounterPayload(
     const tensorflow::core::platform::ErrorSourceProto::ErrorSource&
         error_source,
-    tensorflow::Status& status);
+    absl::Status& status);
+}  // namespace tsl
+
+namespace tensorflow {
+using tsl::kErrorSource;                // NOLINT
+using tsl::OkOrSetErrorCounterPayload;  // NOLINT
 }  // namespace tensorflow
 
 #endif  // TENSORFLOW_CORE_PLATFORM_ERROR_PAYLOADS_H_

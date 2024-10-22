@@ -63,7 +63,7 @@ Status BatchParallelization::OptimizeAndCollectStats(Cluster* cluster,
   if (!autotune_) {
     VLOG(1) << "The optimization batch_parallelization is not applied if "
                "autotune is off.";
-    return Status::OK();
+    return absl::OkStatus();
   }
   MutableGraphView graph(output);
 
@@ -71,7 +71,7 @@ Status BatchParallelization::OptimizeAndCollectStats(Cluster* cluster,
   // because we only want to enable extra batch parallelism on the main dataset
   // pipeline.
   if (graph_utils::IsItemDerivedFromFunctionDef(item, graph))
-    return Status::OK();
+    return absl::OkStatus();
 
   absl::flat_hash_set<string> nodes_to_delete;
   FunctionLibraryDefinition function_library(OpRegistry::Global(),
@@ -94,7 +94,7 @@ Status BatchParallelization::OptimizeAndCollectStats(Cluster* cluster,
   }
 
   TF_RETURN_IF_ERROR(graph.DeleteNodes(nodes_to_delete));
-  return Status::OK();
+  return absl::OkStatus();
 }
 
 REGISTER_GRAPH_OPTIMIZER_AS(BatchParallelization, "batch_parallelization");

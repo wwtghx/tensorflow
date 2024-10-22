@@ -27,7 +27,7 @@ limitations under the License.
 
 #include <stdint.h>
 
-#include "tensorflow/lite/c/common.h"
+#include "tensorflow/lite/core/c/common.h"
 
 namespace tflite {
 
@@ -49,6 +49,10 @@ struct TfLiteTypeToType {};  // Specializations below
 #define MATCH_TYPE_AND_TFLITE_TYPE(CPP_TYPE, TFLITE_TYPE_ENUM) \
   template <>                                                  \
   constexpr TfLiteType typeToTfLiteType<CPP_TYPE>() {          \
+    return TFLITE_TYPE_ENUM;                                   \
+  }                                                            \
+  template <>                                                  \
+  constexpr TfLiteType typeToTfLiteType<const CPP_TYPE>() {    \
     return TFLITE_TYPE_ENUM;                                   \
   }                                                            \
   template <>                                                  \

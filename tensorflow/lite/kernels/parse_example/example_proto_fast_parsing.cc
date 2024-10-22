@@ -14,10 +14,13 @@ limitations under the License.
 ==============================================================================*/
 #include "tensorflow/lite/kernels/parse_example/example_proto_fast_parsing.h"
 
+#include <algorithm>
+#include <utility>
+
 namespace tensorflow {
 namespace example {
 
-string ExampleName(const gtl::ArraySlice<tstring> example_names, int n) {
+string ExampleName(const absl::Span<const tstring> example_names, int n) {
   return example_names.empty() ? "<unknown>" : example_names[n];
 }
 

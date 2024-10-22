@@ -19,6 +19,7 @@ limitations under the License.
 #include "tensorflow/lite/core/api/flatbuffer_conversions.h"
 #include "tensorflow/lite/kernels/internal/compatibility.h"
 #include "tensorflow/lite/kernels/kernel_util.h"
+#include "tensorflow/lite/schema/schema_generated.h"
 #include "tensorflow/lite/schema/schema_utils.h"
 #include "tensorflow/lite/stderr_reporter.h"
 
@@ -36,13 +37,22 @@ class MallocDataAllocator : public BuiltinDataAllocator {
 
 // Get the number of dimensions of a tensor with idx of an operator op.
 inline int GetNumDims(const SubGraph* subgraph, const Operator* op, int idx) {
-  return subgraph->tensors()->Get(op->inputs()->Get(idx))->shape()->size();
+  const flatbuffers::Vector<int32_t>* ret =
+      subgraph->tensors()->Get(op->inputs()->Get(idx))->shape();
+  if (ret) {
+    return ret->size();
+  } else {
+    return 0;
+  }
 }
 
 std::vector<OpSignatureTensorSpec> GetOpSignatureTensorSpecs(
     const flatbuffers::Vector<int32_t>* tensors, const SubGraph* subgraph,
     const Model* model) {
   std::vector<OpSignatureTensorSpec> tensor_specs;
+  if (!tensors) {
+    return tensor_specs;
+  }
   StderrReporter error_reporter;
 
   for (int32_t i = 0; i < tensors->Length(); ++i) {
@@ -62,11 +72,21 @@ std::vector<OpSignatureTensorSpec> GetOpSignatureTensorSpecs(
             tensor_spec.is_const = true;
           }
         }
-        const flatbuffers::Vector<int32_t>* shape_vec =
-            subgraph->tensors()->Get(tensor_no)->shape();
+        const flatbuffers::Vector<int32_t>* shape_vec = fb_tensor->shape();
         if (shape_vec) {
           for (int32_t j = 0; j < shape_vec->Length(); ++j) {
             tensor_spec.dims.push_back(shape_vec->Get(j));
+          }
+        }
+        const flatbuffers::Vector<int32_t>* shape_signature_vec =
+            fb_tensor->shape_signature();
+        tensor_spec.is_shape_dynamic = false;
+        if (shape_signature_vec) {
+          for (int32_t j = 0; j < shape_signature_vec->Length(); ++j) {
+            if (shape_signature_vec->Get(j) == -1) {
+              tensor_spec.is_shape_dynamic = true;
+              break;
+            }
           }
         }
       }
@@ -100,6 +120,7 @@ std::vector<OpSignatureTensorSpec> GetOpSignatureTensorSpecs(
             tensor_spec.dims.push_back(tfl_tensor->dims->data[j]);
           }
         }
+        tensor_spec.is_shape_dynamic = HasUnspecifiedDimension(tfl_tensor);
       }
     }
     tensor_specs.push_back(tensor_spec);
@@ -143,6 +164,15 @@ OpSignature GetOpSignature(const OperatorCode* op_code, const Operator* op,
           subgraph->tensors()->Get(op->inputs()->Get(1));
       op_sig.ext_options.fully_connected.sparse_weight =
           (weight_tensor->sparsity() != nullptr);
+      const QuantizationParameters* weight_quant =
+          weight_tensor->quantization();
+      if (weight_quant && weight_quant->scale() &&
+          weight_quant->scale()->size() && weight_tensor->shape() &&
+          weight_tensor->shape()->size()) {
+        op_sig.ext_options.fully_connected.is_per_channel_quantized =
+            weight_quant->scale()->size() > 1 &&
+            weight_quant->scale()->size() == weight_tensor->shape()->Get(0);
+      }
     } break;
 
     case BuiltinOperator_MUL: {
@@ -169,6 +199,9 @@ OpSignature GetOpSignature(const OperatorCode* op_code, const Operator* op,
         op_sig.ext_options.mul.input2_scale = input2_qunt->scale()->Get(0);
         op_sig.ext_options.mul.output_scale = output_quant->scale()->Get(0);
       }
+      if (input1_quant || input2_qunt) {
+        op_sig.ext_options.mul.input_quantized = true;
+      }
     } break;
 
     case BuiltinOperator_CONV_2D: {
@@ -184,7 +217,7 @@ OpSignature GetOpSignature(const OperatorCode* op_code, const Operator* op,
           filter_quant->scale()->Length() == num_filters) {
         op_sig.ext_options.conv_2d.is_per_channel_quantized = true;
       }
-      if (input_tensor->shape()->size()) {
+      if (input_tensor->shape() && input_tensor->shape()->size()) {
         int num_input_channels = input_tensor->shape()->Get(3);
         int num_filter_input_channels = filter_tensor->shape()->Get(3);
         op_sig.ext_options.conv_2d.is_grouped_convolution =
@@ -230,12 +263,31 @@ OpSignature GetOpSignature(const OperatorCode* op_code, const Operator* op,
       }
     } break;
 
+    case BuiltinOperator_ADD: {
+      if (subgraph->tensors()->Get(op->inputs()->Get(0))->quantization()) {
+        op_sig.ext_options.add.input_quantized = true;
+      }
+    } break;
+
+    case BuiltinOperator_EMBEDDING_LOOKUP: {
+      const Tensor* table_tensor =
+          subgraph->tensors()->Get(op->inputs()->Get(1));
+      const QuantizationParameters* table_quant = table_tensor->quantization();
+      if (table_quant && table_quant->scale() && table_quant->scale()->size() &&
+          table_tensor->shape() && table_tensor->shape()->size()) {
+        op_sig.ext_options.embedding_lookup.is_per_channel_quantized =
+            table_quant->scale()->size() > 1 &&
+            table_quant->scale()->size() == table_tensor->shape()->Get(0);
+      }
+    } break;
+
     default:
       break;
   }
 
   op_sig.inputs = GetOpSignatureTensorSpecs(op->inputs(), subgraph, model);
   op_sig.outputs = GetOpSignatureTensorSpecs(op->outputs(), subgraph, model);
+  op_sig.version = op_code->version();
   return op_sig;
 }
 
@@ -252,6 +304,7 @@ OpSignature GetOpSignature(const TfLiteContext* context, const TfLiteNode* node,
 
   op_sig.inputs = GetOpSignatureTensorSpecs(node->inputs, context, node);
   op_sig.outputs = GetOpSignatureTensorSpecs(node->outputs, context, node);
+  op_sig.version = registration->version;
   return op_sig;
 }
 

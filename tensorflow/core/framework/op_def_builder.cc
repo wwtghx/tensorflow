@@ -114,13 +114,14 @@ bool ConsumeAttrNumber(StringPiece* sp, int64_t* out) {
   } while (false)
 
 bool ConsumeCompoundAttrType(StringPiece* sp, StringPiece* out) {
+  auto capture_data = sp->data();
   auto capture_begin = sp->begin();
   if (absl::ConsumePrefix(sp, "numbertype") ||
       absl::ConsumePrefix(sp, "numerictype") ||
       absl::ConsumePrefix(sp, "quantizedtype") ||
       absl::ConsumePrefix(sp, "realnumbertype") ||
       absl::ConsumePrefix(sp, "realnumberictype")) {
-    *out = StringPiece(capture_begin, sp->begin() - capture_begin);
+    *out = StringPiece(capture_data, sp->begin() - capture_begin);
     return true;
   }
   return false;
@@ -491,7 +492,7 @@ void FinalizeDoc(const string& text, OpDef* op_def,
   // Trim trailing blank lines from the description.
   while (start_l < end_l && lines[end_l - 1].empty()) --end_l;
   string desc = absl::StrJoin(
-      gtl::ArraySlice<string>(lines.data() + start_l, end_l - start_l), "\n");
+      absl::Span<const string>(lines.data() + start_l, end_l - start_l), "\n");
   if (!desc.empty()) op_def->set_description(desc);
 
   // name: description
@@ -636,13 +637,13 @@ OpDefBuilder& OpDefBuilder::SetTypeConstructor(OpTypeConstructor c) {
   return *this;
 }
 
-OpDefBuilder& OpDefBuilder::SetForwardTypeFn(ForwardTypeInferenceFn f) {
+OpDefBuilder& OpDefBuilder::SetForwardTypeFn(TypeInferenceFn f) {
   op_reg_data_.fwd_type_fn = f;
   return *this;
 }
 
 OpDefBuilder& OpDefBuilder::SetReverseTypeFn(int input_number,
-                                             ForwardTypeInferenceFn f) {
+                                             TypeInferenceFn f) {
   op_reg_data_.rev_type_fn = f;
   op_reg_data_.rev_type_input = input_number;
   return *this;
@@ -686,7 +687,7 @@ Status OpDefBuilder::Finalize(OpRegistrationData* op_reg_data) const {
     TF_RETURN_IF_ERROR(op_reg_data->type_ctor(op_def));
   }
 
-  if (errors.empty()) return Status::OK();
+  if (errors.empty()) return absl::OkStatus();
   return errors::InvalidArgument(absl::StrJoin(errors, "\n"));
 }
 

@@ -16,6 +16,7 @@ limitations under the License.
 #ifndef TENSORFLOW_CORE_GRAPH_GRAPH_DEF_BUILDER_H_
 #define TENSORFLOW_CORE_GRAPH_GRAPH_DEF_BUILDER_H_
 
+#include <string>
 #include <vector>
 
 #include "tensorflow/core/framework/function.pb.h"
@@ -73,7 +74,7 @@ class GraphDefBuilder {
     // Sets the Graph (that Nodes will be added to) and the status.  The
     // status may be set to nullptr, in which case errors cause CHECK
     // failures.  The graph and status must outlive *this.
-    Options(Graph* graph, Status* status);
+    Options(Graph* graph, absl::Status* status);
     ~Options();
 
     // Methods for setting options.  These are const methods: they
@@ -81,7 +82,7 @@ class GraphDefBuilder {
     Options WithName(StringPiece name) const;
     Options WithDevice(StringPiece device) const;
     Options WithControlInput(Node* control_input) const;
-    Options WithControlInputs(gtl::ArraySlice<Node*> control_inputs) const;
+    Options WithControlInputs(absl::Span<Node* const> control_inputs) const;
 
     // Override the default value for an optional attr.
     template <class T>
@@ -104,7 +105,7 @@ class GraphDefBuilder {
     // Returns a string representation of the status associated with *this.
     // Returns the string `"OK"` if the status doesn't have any error.
     string StatusToString() const {
-      return status_->ok() ? "OK" : status_->error_message();
+      return status_->ok() ? "OK" : std::string(status_->message());
     }
 
     // Given the Op type name, return a name for a node of that type.
@@ -118,7 +119,7 @@ class GraphDefBuilder {
     Node* FinalizeBuilder(NodeBuilder* builder) const;
 
     // Updates the associated status, if any, or calls TF_CHECK_OK if none.
-    void UpdateStatus(const Status& status) const;
+    void UpdateStatus(const absl::Status& status) const;
 
     // Accessor
     const OpRegistryInterface* op_registry() const {
@@ -129,7 +130,7 @@ class GraphDefBuilder {
     Options WithNameImpl(StringPiece name);
     Options WithDeviceImpl(StringPiece device);
     Options WithControlInputImpl(Node* control_input);
-    Options WithControlInputsImpl(gtl::ArraySlice<Node*> control_inputs);
+    Options WithControlInputsImpl(absl::Span<Node* const> control_inputs);
     template <class T>
     Options WithAttrImpl(StringPiece name, T&& value) {
       attrs_.emplace_back(string(name), AttrValue());
@@ -138,7 +139,7 @@ class GraphDefBuilder {
     }
 
     Graph* const graph_;
-    Status* const status_;
+    absl::Status* const status_;
     string name_;
     string device_;
     std::vector<Node*> control_inputs_;
@@ -163,13 +164,13 @@ class GraphDefBuilder {
 
   // Once all the nodes have been added, call this to get whether it was
   // successful, and if so fill *graph_def.
-  Status ToGraphDef(GraphDef* graph_def) const;
+  absl::Status ToGraphDef(GraphDef* graph_def) const;
 
   // Adds the function and gradient definitions in `fdef_lib` to this graph's op
   // registry. Ignores duplicate functions, and returns a bad status if an
   // imported function differs from an existing function or op with the same
   // name.
-  Status AddFunctionLibrary(const FunctionDefLibrary& fdef_lib) {
+  absl::Status AddFunctionLibrary(const FunctionDefLibrary& fdef_lib) {
     return flib_def_.AddLibrary(fdef_lib);
   }
 
@@ -182,7 +183,7 @@ class GraphDefBuilder {
  private:
   Graph graph_;
   FunctionLibraryDefinition flib_def_;
-  Status status_;
+  absl::Status status_;
   Options opts_;
 };
 
